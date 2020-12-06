@@ -10,42 +10,30 @@ var inputs = "FFBBBFBLRL\nBFFFBFBRRR\nBFFFBFBLRL\nBFFBFBBLRR\nBBFFBFFRLL\nBFFFBF
 
 var InvalidLetter = Caml_exceptions.create("Day05.InvalidLetter");
 
-var CannotFindRow = Caml_exceptions.create("Day05.CannotFindRow");
+var CannotFindCoord = Caml_exceptions.create("Day05.CannotFindCoord");
 
 function partition(letter, param) {
   var last = param[1];
   var first = param[0];
   var mid = ((last - first | 0) / 2 | 0) + first | 0;
-  var exit = 0;
   switch (letter) {
     case "F" :
     case "L" :
-        exit = 1;
-        break;
+        return /* tuple */[
+                first,
+                mid
+              ];
     case "B" :
     case "R" :
-        exit = 2;
-        break;
+        return /* tuple */[
+                mid + 1 | 0,
+                last
+              ];
     default:
       throw [
             InvalidLetter,
             letter
           ];
-  }
-  switch (exit) {
-    case 1 :
-        console.log("F/L", first, mid);
-        return /* tuple */[
-                first,
-                mid
-              ];
-    case 2 :
-        console.log("B/R", mid + 1 | 0, last);
-        return /* tuple */[
-                mid + 1 | 0,
-                last
-              ];
-    
   }
 }
 
@@ -66,7 +54,7 @@ function findCoord(_param, _str) {
       continue ;
     } else {
       throw [
-            CannotFindRow,
+            CannotFindCoord,
             /* tuple */[
               first,
               last
@@ -91,23 +79,13 @@ function findSeatPos(str) {
         ];
 }
 
-console.log(partition("F", /* tuple */[
-          0,
-          127
-        ]));
-
 var partitioned = findCoord(/* tuple */[
       0,
       127
     ], $$Array.to_list(inputStr.split("")));
 
-console.log("P", partitioned);
-
-console.log("F", findSeatPos(inputStr));
-
 var day1 = $$Array.fold_left((function (a, b) {
-        var match = a > b;
-        if (match) {
+        if (a > b) {
           return a;
         } else {
           return b;
@@ -118,13 +96,42 @@ var day1 = $$Array.fold_left((function (a, b) {
 
 console.log("Day 1:", day1);
 
+function day2(param) {
+  var seatIds = $$Array.map((function (param) {
+          return (param[0] << 3) + param[1] | 0;
+        }), $$Array.map(findSeatPos, inputs.split("\n")));
+  $$Array.sort((function (a, b) {
+          return a - b | 0;
+        }), seatIds);
+  return $$Array.fold_left((function (param, curr) {
+                  var prev = param[0];
+                  if ((curr - prev | 0) === 2) {
+                    return /* tuple */[
+                            curr,
+                            prev + 1 | 0
+                          ];
+                  } else {
+                    return /* tuple */[
+                            curr,
+                            param[1]
+                          ];
+                  }
+                }), /* tuple */[
+                0,
+                0
+              ], seatIds)[1];
+}
+
+console.log("Day 2:", day2(/* () */0));
+
 exports.inputStr = inputStr;
 exports.inputs = inputs;
 exports.InvalidLetter = InvalidLetter;
-exports.CannotFindRow = CannotFindRow;
+exports.CannotFindCoord = CannotFindCoord;
 exports.partition = partition;
 exports.findCoord = findCoord;
 exports.findSeatPos = findSeatPos;
 exports.partitioned = partitioned;
 exports.day1 = day1;
-/*  Not a pure module */
+exports.day2 = day2;
+/* partitioned Not a pure module */

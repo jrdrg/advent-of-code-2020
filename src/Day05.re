@@ -826,19 +826,15 @@ FFBFFFBLRL
 BFBBBFFLRL";
 
 exception InvalidLetter(string);
-exception CannotFindRow((int, int));
+exception CannotFindCoord((int, int));
 
 let partition = (letter: string, (first: int, last: int)) => {
   let mid = (last - first) / 2 + first;
   switch (letter) {
   | "L"
-  | "F" =>
-    Js.log3("F/L", first, mid);
-    (first, mid);
+  | "F" => (first, mid)
   | "R"
-  | "B" =>
-    Js.log3("B/R", mid + 1, last);
-    (mid + 1, last);
+  | "B" => (mid + 1, last)
   | l => raise(InvalidLetter(l))
   };
 };
@@ -847,7 +843,7 @@ let rec findCoord = ((first: int, last: int), str: list(string)) => {
   switch (str) {
   | _ when first === last => first
   | [head, ...rest] => rest |> findCoord(partition(head, (first, last)))
-  | _ => raise(CannotFindRow((first, last)))
+  | _ => raise(CannotFindCoord((first, last)))
   };
 };
 
@@ -867,19 +863,40 @@ let findSeatPos = (str: string) => {
   (row, col);
 };
 
-Js.log(partition("F", (0, 127)));
-
 let partitioned =
   inputStr |> Js.String.split("") |> Array.to_list |> findCoord((0, 127));
-
-Js.log2("P", partitioned);
-Js.log2("F", findSeatPos(inputStr));
 
 let day1 =
   inputs
   |> Js.String.split("\n")
   |> Array.map(findSeatPos)
   |> Array.map(((row, col)) => row * 8 + col)
-  |> Array.fold_left((a, b) => {a > b ? a : b}, 0);
+  |> Array.fold_left((a, b) => {max(a, b)}, 0);
 
 Js.log2("Day 1:", day1);
+
+let day2 = () => {
+  let seatIds =
+    inputs
+    |> Js.String.split("\n")
+    |> Array.map(findSeatPos)
+    |> Array.map(((row, col)) => row * 8 + col);
+
+  seatIds |> Array.sort((a, b) => a - b);
+
+  let (_, id) =
+    seatIds
+    |> Array.fold_left(
+         ((prev, id), curr) =>
+           if (curr - prev === 2) {
+             (curr, prev + 1);
+           } else {
+             (curr, id);
+           },
+         (0, 0),
+       );
+
+  id;
+};
+
+Js.log2("Day 2:", day2());
