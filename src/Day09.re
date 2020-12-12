@@ -1061,4 +1061,49 @@ let day1 = () => {
 
 Js.log2("Day 1", day1());
 
-let sorted = (values: array(int)) => {};
+let rec findSum =
+        (
+          ~sums: list((list(float), float))=[],
+          targetSum: float,
+          values: list(float),
+        ) => {
+  switch (values) {
+  | [head, ...rest] =>
+    let added =
+      sums |> List.map(((range, sum)) => ([head, ...range], sum +. head));
+    switch (added |> List.find_opt(((_, sum)) => sum === targetSum)) {
+    | Some(item) => Some(item)
+    | None => findSum(~sums=[([head], head), ...added], targetSum, rest)
+    };
+  | [] => None
+  };
+};
+
+/*
+   35 - 35
+   20 - 55, 20
+   15 - 70, 35, 15
+   25 - 95, 60, 40, 25
+   47 - 142, 107, 87, 72, 47
+   40 - 182, 147, (127), 112, 87
+ */
+
+let day2 = () => {
+  exception NoRangeFound;
+
+  let input = parseInput(inputStr) |> Array.to_list;
+  let invalidNumber = input |> checkSums(25);
+
+  switch (findSum(invalidNumber, input)) {
+  | Some((range, _sum)) =>
+    let sorted =
+      range |> List.sort((a, b) => a < b ? (-1) : 1) |> Array.of_list;
+    let (first, last) = (sorted[0], sorted[Array.length(sorted) - 1]);
+
+    first +. last;
+
+  | None => raise(NoRangeFound)
+  };
+};
+
+Js.log2("Day 2", day2());
