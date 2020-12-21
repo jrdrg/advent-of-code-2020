@@ -3,6 +3,11 @@ mem[8] = 11
 mem[7] = 101
 mem[8] = 0";
 
+let exampleStr2 = "mask = 000000000000000000000000000000X1001X
+mem[42] = 100
+mask = 00000000000000000000000000000000X0XX
+mem[26] = 1";
+
 let inputStr = "mask = 001X10110010XXX1011X10X0X010110011X0
 mem[7813] = 131
 mem[54447] = 69257
@@ -649,22 +654,22 @@ let parseLine = (system: system, line: string) => {
   | (None, Some((address, value))) =>
     let maskedValue = applyBitmask(system, value);
     let memory = system.memory->Belt.Map.Int.set(address, maskedValue);
-    Js.log4("writing", maskedValue, "to", address);
     {...system, memory};
   | _ => raise(InvalidLine(line))
   };
 };
 
-
-let rec runProgram = (~system: system=makeSystem(), program: list(string)) => {
+let rec runProgram =
+        (
+          ~system: system=makeSystem(),
+          ~updater=parseLine,
+          program: list(string),
+        ) => {
   switch (program) {
   | [line, ...rest] =>
-    Js.log2("line", line);
-    let updated = parseLine(system, line);
-    runProgram(~system=updated, rest);
-  | _ =>
-    Js.log2("DONE", program);
-    system;
+    let updated = updater(system, line);
+    runProgram(~system=updated, ~updater, rest);
+  | _ => system
   };
 };
 
@@ -677,9 +682,75 @@ let day1 = () => {
 
   let system = runProgram(input);
   let values = system.memory->Belt.Map.Int.valuesToArray;
-  Js.log3("values", values, Array.length(values));
 
   values |> Array.fold_left((sum, value) => sum +. float_of_int(value), 0.);
 };
 
 Js.log2("Day 1:", day1());
+
+let applyBitmaskToAddress = (system: system, address: int) => {
+  exception InvalidBitmaskDigit(int);
+  let bits = intToArray(address);
+
+  let rec generateAddresses =
+          (
+            ~index: int=0,
+            ~addresses: list(list(int))=[[]],
+            addr: array(int),
+          ) =>
+    if (index >= Array.length(addr)) {
+      addresses;
+    } else {
+      switch (system.bitmask[index]) {
+      | Some(0) =>
+        let generated = addresses |> List.map(a => {[addr[index], ...a]});
+        generateAddresses(~index=index + 1, ~addresses=generated, addr);
+      | Some(1) =>
+        let generated = addresses |> List.map(a => {[1, ...a]});
+        generateAddresses(~index=index + 1, ~addresses=generated, addr);
+      | None =>
+        let generated0 = addresses |> List.map(a => {[0, ...a]});
+        let generated1 = addresses |> List.map(a => {[1, ...a]});
+        generateAddresses(
+          ~index=index + 1,
+          ~addresses=generated0 @ generated1,
+          addr,
+        );
+
+      | Some(d) => raise(InvalidBitmaskDigit(d))
+      };
+    };
+
+  let addresses = generateAddresses(bits);
+  addresses
+  |> List.map(List.rev)
+  |> List.map(addr => Array.of_list(addr) |> arrayToInt);
+};
+
+let parseLineDay2 = (system: system, line: string) => {
+  exception InvalidLine(string);
+
+  switch (parseMask(line), parseMemValue(line)) {
+  | (Some(mask), None) => {...system, bitmask: stringToBitmask(mask)}
+  | (None, Some((address, value))) =>
+    let addresses = applyBitmaskToAddress(system, address);
+    let memory =
+      addresses
+      |> List.fold_left(
+           (mem, addr) => {Belt.Map.Int.set(mem, addr, value)},
+           system.memory,
+         );
+    {...system, memory};
+  | _ => raise(InvalidLine(line))
+  };
+};
+
+let day2 = () => {
+  let input = inputStr |> parseInput;
+  let system = runProgram(~updater=parseLineDay2, input);
+  let values = system.memory->Belt.Map.Int.valuesToArray;
+
+  values |> Array.fold_left((sum, value) => sum +. float_of_int(value), 0.);
+};
+
+Js.log2("Day 2:", day2());
